@@ -1,113 +1,206 @@
+"use client"
 import Image from 'next/image'
+import { useState } from 'react'
+import { v4 as uuidv4 } from 'uuid';
 
 export default function Home() {
+  const [meetingId, setMeetingId] = useState(null)
+  const [meetingOn, setMeetingOn] = useState(true)
+  const [username, setUsername] = useState(null)
+  const [enteredMeetingId, setEnteredMeetingId] = useState(null)
+  const [clientObj, setClientObj] = useState(null);
+  const [localStream, setLocalStream] = useState(null);
+  const [opponentVideo, setOpponentVideo] = useState(null);
+  const [opponentAudio, setOpponentAudio] = useState(null);
+  const [oppoCamera, setOppoCamera] = useState(false);
+  const [oppoMic, setOppoMic] = useState(false);
+  const [myCamera, setMyCamera] = useState(false);
+  const [myMic, setMyMic] = useState(false);
+
+
+  const handleGenerateId = () => {
+    setMeetingId(uuidv4)
+  }
+
+  const handleJoin = async () => {
+    if (username && enteredMeetingId) {
+      try {
+        setMeetingOn(true)
+        const res = await fetch("/api/getToken", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ "userId": username, "channelName": enteredMeetingId }),
+        });
+        const data = JSON.parse(JSON.stringify(await res.json()));
+        console.log(data)
+        if (res.status === 200) {
+          let AgoraRTC_N4190 = require("./AgoraRTC_N-4.19.0");
+          const token = data["token"];
+          let localTracks = [];
+          const APP_ID = "98c5588fc2e0418d92c681bfebe81ac4";
+          const client = AgoraRTC_N4190.createClient({
+            mode: "rtc",
+            codec: "vp8",
+          });
+          setClientObj(client);
+
+          const handleUserJoined = async (user, mediaType) => {
+            await client.subscribe(user, mediaType);
+            if (mediaType === "video") {
+              user.videoTrack.play(`videoOppo`);
+              setOpponentVideo(user.videoTrack);
+              setOppoCamera(true);
+            }
+            if (mediaType === "audio") {
+              user.audioTrack.play();
+              setOpponentAudio(user.audioTrack);
+              setOppoMic(true);
+            }
+          };
+          const handleUserLeft = async (user) => {
+            setOpponentVideo(null);
+            setOpponentAudio(null);
+            setOppoCamera(false);
+            setOppoMic(false);
+          };
+          client.on("user-published", handleUserJoined);
+          client.on("user-left", handleUserLeft);
+          await client.join(APP_ID, enteredMeetingId, token, username);
+          localTracks = await AgoraRTC_N4190.createMicrophoneAndCameraTracks();
+          setLocalStream(localTracks);
+          localTracks[1].play(`videoMe`);
+          await client.publish([localTracks[0], localTracks[1]]);
+          setMyCamera(true);
+          setMyMic(true);
+        }
+
+
+      } catch (error) {
+        setMeetingOn(false)
+      }
+    }
+  }
+
+  const leaveAndRemoveLocalStream = async () => {
+    if (localStream && clientObj) {
+      for (let i = 0; localStream.length > i; i++) {
+        localStream[i].stop();
+        localStream[i].close();
+      }
+      await clientObj.leave();
+      setLocalStream(null);
+      setClientObj(null);
+      setOpponentAudio(null);
+      setOpponentVideo(null);
+      setMyCamera(false);
+      setOppoCamera(false);
+      setMyMic(false);
+      setOppoMic(false);
+    }
+  };
+
+  const handleToggleCamera = async (e) => {
+    if (localStream) {
+      if (localStream[1].muted) {
+        await localStream[1].setMuted(false);
+        setMyCamera(true);
+      } else {
+        await localStream[1].setMuted(true);
+        setMyCamera(false);
+      }
+    }
+  };
+
+  let handleToggleMic = async (e) => {
+    if (localStream) {
+      if (localStream[0].muted) {
+        await localStream[0].setMuted(false);
+        setMyMic(true);
+      } else {
+        await localStream[0].setMuted(true);
+        setMyMic(false);
+      }
+    }
+  };
+
+  const handleMuteVideoOpponent = async (e) => {
+    if (opponentVideo) {
+      if (opponentVideo["isPlaying"]) {
+        await opponentVideo.stop();
+        setOppoCamera(false);
+      } else {
+        await opponentVideo.play("videoOppo");
+        setOppoCamera(true);
+      }
+    }
+  };
+
+  const handleMuteAudioOpponent = async (e) => {
+    if (opponentAudio) {
+      if (opponentAudio["isPlaying"]) {
+        await opponentAudio.stop();
+        setOppoMic(false);
+      } else {
+        await opponentAudio.play();
+        setOppoMic(true);
+      }
+    }
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+    <>
+<div className="flex flex-col space-y-5">
+  <div id="meetingidgenerate" className="flex">
+    <div className="bg-white w-1/2 text-black p-4">
+      {meetingId ? meetingId : 'Meeting Id here'}
+    </div>
+    <button onClick={handleGenerateId} id="generateMeetingId" className="p-4 bg-blue-500 text-white">Generate Meeting ID</button>
+  </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+  <div id="joinmeet" className="flex flex-col space-y-5">
+    <input
+      onChange={(e) => { setUsername(e.target.value) }}
+      type="text"
+      id="usernamefield"
+      className="w-1/2 text-black p-4 bg-gray-200"
+      placeholder="Username"
+    />
+    <div id="mainjoin" className="flex">
+      <input
+        onChange={(e) => { setEnteredMeetingId(e.target.value) }}
+        type="text"
+        className="w-1/2 text-black p-4 bg-gray-200"
+        placeholder="Enter Meeting ID here"
+      />
+      <button onClick={handleJoin} className="p-4 bg-blue-500 text-white">Join</button>
+    </div>
+  </div>
+</div>
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+<div id="videosection" className="m-4 flex space-x-3">
+  <div id="me" className="flex flex-col space-y-5">
+    <div id="videoMe" className="bg-white w-[35vw] h-[30vh]">
+      {/* Video content */}
+    </div>
+    <div id="videoControlsMe" className="flex space-x-3">
+      <button onClick={leaveAndRemoveLocalStream} className="p-4 bg-red-500 text-white">Leave</button>
+      <button onClick={handleToggleCamera} className="p-4 bg-blue-500 text-white">Camera</button>
+      <button onClick={handleToggleMic} className="p-4 bg-blue-500 text-white">Mic</button>
+    </div>
+  </div>
+  <div id="opponent" className="flex flex-col space-y-5">
+    <div id="videoOppo" className="bg-white w-[35vw] h-[30vh]">
+      {/* Opponent's video content */}
+    </div>
+    <div id="videoControlsOppo" className="flex space-x-3">
+      <button onClick={handleMuteVideoOpponent} className="p-4 bg-blue-500 text-white">Camera</button>
+      <button onClick={handleMuteAudioOpponent} className="p-4 bg-blue-500 text-white">Mic</button>
+    </div>
+  </div>
+</div>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore the Next.js 13 playground.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </>
   )
 }
