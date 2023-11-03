@@ -151,15 +151,16 @@ export default function Home() {
 
   return (
     <>
-<div className="flex flex-col space-y-5">
-  <div id="meetingidgenerate" className="flex">
+<div className="flex flex-col space-y-5 ">
+  <h1 className=' p-5 font-bold text-5xl text-center'>CallCrafter!</h1>
+  <div id="meetingidgenerate" className="flex mx-5 mt-5">
     <div className="bg-white w-1/2 text-black p-4">
       {meetingId ? meetingId : 'Meeting Id here'}
     </div>
     <button onClick={handleGenerateId} id="generateMeetingId" className="p-4 bg-blue-500 text-white">Generate Meeting ID</button>
   </div>
 
-  <div id="joinmeet" className="flex flex-col space-y-5">
+  <div id="joinmeet" className="flex flex-col space-y-5 mx-5">
     <input
       onChange={(e) => { setUsername(e.target.value) }}
       type="text"
@@ -181,22 +182,22 @@ export default function Home() {
 
 <div id="videosection" className="m-4 flex space-x-3">
   <div id="me" className="flex flex-col space-y-5">
-    <div id="videoMe" className="bg-white w-[35vw] h-[30vh]">
+    <div id="videoMe" className="bg-white w-[40vw] h-[40vh]">
       {/* Video content */}
     </div>
     <div id="videoControlsMe" className="flex space-x-3">
       <button onClick={leaveAndRemoveLocalStream} className="p-4 bg-red-500 text-white">Leave</button>
-      <button onClick={handleToggleCamera} className="p-4 bg-blue-500 text-white">Camera</button>
-      <button onClick={handleToggleMic} className="p-4 bg-blue-500 text-white">Mic</button>
+      <button onClick={handleToggleCamera} className="p-4 bg-blue-500 text-white">{myCamera?'camera on':'camera off'}</button>
+      <button onClick={handleToggleMic} className="p-4 bg-blue-500 text-white">{myMic?'mic on':'mic off'}</button>
     </div>
   </div>
   <div id="opponent" className="flex flex-col space-y-5">
-    <div id="videoOppo" className="bg-white w-[35vw] h-[30vh]">
+    <div id="videoOppo" className="bg-white w-[40vw] h-[40vh]">
       {/* Opponent's video content */}
     </div>
     <div id="videoControlsOppo" className="flex space-x-3">
-      <button onClick={handleMuteVideoOpponent} className="p-4 bg-blue-500 text-white">Camera</button>
-      <button onClick={handleMuteAudioOpponent} className="p-4 bg-blue-500 text-white">Mic</button>
+      <button onClick={handleMuteVideoOpponent} className="p-4 bg-blue-500 text-white">{oppoCamera?'camera on':'camera off'}</button>
+      <button onClick={handleMuteAudioOpponent} className="p-4 bg-blue-500 text-white">{oppoMic?'mic on':'mic off'}</button>
     </div>
   </div>
 </div>
